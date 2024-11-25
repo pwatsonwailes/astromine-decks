@@ -82,9 +82,8 @@ export const AsteroidMap: React.FC = () => {
               <SortHeader field="name" label="Name" />
               <SortHeader field="type" label="Type" />
               <SortHeader field="health" label="Status" />
-              <SortHeader field="difficulty" label="Difficulty" />
-              <th className="px-4 py-2">Resources</th>
-              <th className="px-4 py-2">Mining Operations</th>
+              <SortHeader field="difficulty" label="Complexity" />
+              <th className="px-4 py-2">Status</th>
               <th className="px-4 py-2">Actions</th>
             </tr>
           </thead>
@@ -123,15 +122,6 @@ export const AsteroidMap: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="space-y-1">
-                      {Object.entries(asteroid.resources).map(([resource, amount]) => (
-                        <div key={resource} className="text-sm">
-                          {resource}: {amount}
-                        </div>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
                     {assignedShips.length > 0 ? (
                       <div className="space-y-2">
                         {assignedShips.map(ship => (
@@ -148,7 +138,7 @@ export const AsteroidMap: React.FC = () => {
                         ))}
                       </div>
                     ) : (
-                      <span className="text-gray-400">No active operations</span>
+                      <span className="text-gray-400">Unclaimed</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -156,7 +146,7 @@ export const AsteroidMap: React.FC = () => {
                       onClick={() => handleAssignShip(asteroid)}
                       className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
                     >
-                      Assign Ship
+                      Send Ship
                     </button>
                   </td>
                 </tr>
