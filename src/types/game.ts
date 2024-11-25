@@ -52,6 +52,8 @@ export interface Ship {
   range: ShipRange;
   carrierCapacity?: number;
   carriedShips?: Ship[];
+  ownerId: string;
+  ownerName: string;
 }
 
 export interface Card {

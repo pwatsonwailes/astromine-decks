@@ -8,7 +8,7 @@ const createShipTemplate = (
   speed: ShipSpeed,
   range: ShipRange,
   carrierCapacity?: number
-): Omit<Ship, 'id' | 'name'> => ({
+): Omit<Ship, 'id' | 'name' | 'ownerId' | 'ownerName'> => ({
   class: className,
   cost,
   maxHealth,
@@ -24,7 +24,7 @@ const createShipTemplate = (
   ...(carrierCapacity ? { carrierCapacity, carriedShips: [] } : {})
 });
 
-export const shipTemplates: Record<ShipClass, Omit<Ship, 'id' | 'name'>> = {
+export const shipTemplates: Record<ShipClass, Omit<Ship, 'id' | 'name' | 'ownerId' | 'ownerName'>> = {
   // Mining Ships
   prospector: createShipTemplate('prospector', 100, 50, {
     mining: 1,
@@ -101,13 +101,15 @@ const shipNames: Record<ShipClass, string[]> = {
   'command-cruiser': ['Command', 'Admiral', 'Overlord']
 };
 
-export const createShip = (className: ShipClass): Ship => {
+export const createShip = (className: ShipClass, ownerId: string, ownerName: string): Ship => {
   const template = shipTemplates[className];
   const names = shipNames[className];
   
   return {
     ...template,
     id: crypto.randomUUID(),
-    name: `${names[Math.floor(Math.random() * names.length)]}-${Math.floor(Math.random() * 1000)}`
+    name: `${names[Math.floor(Math.random() * names.length)]}-${Math.floor(Math.random() * 1000)}`,
+    ownerId,
+    ownerName
   };
 };

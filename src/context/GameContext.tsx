@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useReducer } from 'react';
-import { GameState, Card, Corporation, Asteroid, Ship, Equipment, ShipClass } from '../types/game';
+import { GameState, Card, Corporation, Asteroid, Resource, Ship, Equipment, ShipClass } from '../types/game';
 import { initialCards } from '../data/cards';
 import { generateInitialAsteroids, shuffleDeck, createDeckWithUniqueIds } from '../utils/gameUtils';
 import { createShip } from '../data/ships';
 import { equipmentList } from '../data/equipment'
 
-const createInitialCorporation = (): Corporation => {
-  const basicShip = createShip('prospector');
+const createInitialCorporation = (id: string, name: string): Corporation => {
+  const basicShip = createShip('prospector', id, name);
   const basicLaser = equipmentList.find(eq => eq.id === 'basic-mining-laser')!;
   
   return {
@@ -17,11 +17,13 @@ const createInitialCorporation = (): Corporation => {
     credits: 200,
     shield: 0,
     resources: {
+      silicates: 0,
+      oxides: 0,
+      sulfides: 0,
       iron: 0,
-      titanium: 0,
-      platinum: 0,
-      water: 0,
-      helium3: 0
+      nickel: 0,
+      silicon: 0,
+      magnesium: 0
     },
     equippedMiningTypes: ['C'],
     ships: [{
@@ -45,8 +47,6 @@ const generateShopCards = () => {
     }));
 };
 
-const initialCorporation: Corporation = createInitialCorporation()
-
 const { deck: initialDeck, hand: initialHand } = (() => {
   const fullDeck = createDeckWithUniqueIds([...initialCards, ...initialCards, ...initialCards]);
   const shuffledDeck = shuffleDeck(fullDeck);
@@ -57,13 +57,8 @@ const { deck: initialDeck, hand: initialHand } = (() => {
 })();
 
 const initialState: GameState = {
-  player: initialCorporation,
-  opponent: {
-    ...initialCorporation,
-    id: 'opponent',
-    name: 'Lunar Industries',
-    ships: []
-  },
+  player: createInitialCorporation('player', 'Terra Mining Corp'),
+  opponent: createInitialCorporation('opponent', 'Lunar Industries'),
   asteroids: generateInitialAsteroids(5),
   deck: initialDeck,
   hand: initialHand,
@@ -83,6 +78,7 @@ type GameAction =
   | { type: 'PURCHASE_CARD'; cardId: string }
   | { type: 'RECALL_MINING_OPERATION'; operationId: string }
   | { type: 'REFRESH_SHOP' }
+  | { type: 'SELL_RESOURCE'; resource: Resource; amount: number; price: number }
   | { type: 'BUY_SHIP'; shipClass: ShipClass }
   | { type: 'SELL_SHIP'; shipId: string }
   | { type: 'BUY_EQUIPMENT'; equipment: Equipment; shipId: string }
@@ -94,12 +90,14 @@ type GameAction =
 const gameReducer = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
     case 'BUY_SHIP': {
-      const newShip = createShip(action.shipClass);
+      const newShip = createShip(action.shipClass, state.player.id, state.player.name);
       const cost = newShip.cost;
 
-      // Check if player has appropriate space dock for ship type
-      const isBasicShip = ['prospector', 'assault-fighter', 'scoutship'].includes(action.shipClass);
-      if (!isBasicShip && !state.player.hasAdvancedSpaceDock) return state;
+      if (!state.player.hasAdvancedSpaceDock && 
+          !['prospector', 'assault-fighter', 'scoutship'].includes(action.shipClass)) {
+        return state;
+      }
+      
       if (state.player.credits < cost) return state;
 
       return {

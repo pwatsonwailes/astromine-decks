@@ -19,7 +19,7 @@ export const AsteroidDetails: React.FC<AsteroidDetailsProps> = ({
   );
 
   const groupedShips = ships.reduce((groups, ship) => {
-    const key = ship.owner || 'unknown';
+    const key = ship.ownerName;
     return {
       ...groups,
       [key]: [...(groups[key] || []), ship]
@@ -77,10 +77,10 @@ export const AsteroidDetails: React.FC<AsteroidDetailsProps> = ({
         {/* Present Ships */}
         <div>
           <h3 className="text-lg font-semibold mb-3">Present Ships</h3>
-          {Object.entries(groupedShips).map(([owner, ships]) => (
-            <div key={owner} className="mb-4">
+          {Object.entries(groupedShips).map(([ownerName, ships]) => (
+            <div key={ownerName} className="mb-4">
               <h4 className="text-md font-medium mb-2 capitalize">
-                {owner} Ships
+                {ownerName} Ships
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {ships.map(ship => (

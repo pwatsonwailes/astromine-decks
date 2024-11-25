@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGame } from '../context/GameContext';
-import { ShipClass, ShipSpeed, ShipRange, EquipmentSlot } from '../types/game';
+import { Ship, ShipClass, ShipSpeed, ShipRange, EquipmentSlot } from '../types/game';
 import { shipTemplates } from '../data/ships';
 import { Shield, Sword, Pickaxe } from 'lucide-react';
 
