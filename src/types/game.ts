@@ -8,6 +8,42 @@ export type Resource =
   | 'silicon' 
   | 'magnesium';
 
+export type DiplomaticStatus = 'friendly' | 'neutral' | 'hostile' | 'war';
+export type DiplomaticAction = 'non-aggression' | 'joint-combat' | 'peace';
+export type CombatAction = 'attack' | 'defend' | 'retreat';
+
+export interface DiplomaticAgreement {
+  id: string;
+  type: DiplomaticAction;
+  parties: [string, string]; // [corporationId1, corporationId2]
+  terms: {
+    penalty: number;
+    duration?: number;
+    turnsToAct?: number;
+  };
+  status: 'active' | 'broken' | 'completed';
+  createdAt: number;
+}
+
+export interface DiplomaticProposal {
+  id: string;
+  action: DiplomaticAction;
+  fromCorporationId: string;
+  toCorporationId: string;
+  terms: {
+    penalty: number;
+    duration?: number;
+    turnsToAct?: number;
+  };
+  createdAt: number;
+}
+
+export interface CorporationPersonality {
+  aggression: number;  // 0-1, likelihood to engage in combat
+  cooperation: number; // 0-1, likelihood to accept diplomatic proposals
+  greed: number;      // 0-1, focus on resource acquisition
+}
+
 export type EquipmentSlot = 'mining' | 'defense' | 'weapon';
 
 export interface Equipment {
@@ -80,6 +116,51 @@ export interface Corporation {
   equippedMiningTypes: AsteroidType[];
   ships: Ship[];
   hasAdvancedSpaceDock: boolean;
+  diplomaticStatus: Record<string, DiplomaticStatus>;
+  agreements: DiplomaticAgreement[];
+  isPlayer: boolean;
+  personality?: CorporationPersonality;
+}
+
+export interface CombatState {
+  id: string;
+  attackerId: string;
+  defenderId: string;
+  attackerShips: Ship[];
+  defenderShips: Ship[];
+  turn: number;
+  status: 'active' | 'completed';
+  winner?: string;
+  rewards?: {
+    credits: number;
+    resources: Partial<Record<Resource, number>>;
+  };
+}
+
+export type TradeGoodCategory = 
+  | 'basic_resources'
+  | 'luxury_goods'
+  | 'industrial'
+  | 'medical'
+  | 'technology'
+  | 'ship_parts';
+
+export interface TradeGood {
+  id: string;
+  name: string;
+  category: TradeGoodCategory;
+  baseValue: number;
+  description: string;
+  volatility: number; // 0-1, how much the price fluctuates
+  rarity: 'common' | 'uncommon' | 'rare';
+}
+
+export interface MarketPrice {
+  goodId: string;
+  buyPrice: number;
+  sellPrice: number;
+  lastUpdate: number;
+  supply: number;
 }
 
 export interface Trader {
@@ -136,9 +217,49 @@ export interface GameLog {
   creditChange?: number;
 }
 
+export type CombatCardType = 
+  | 'attack' 
+  | 'defense' 
+  | 'tactical' 
+  | 'support';
+
+export interface CombatCard {
+  id: string;
+  name: string;
+  type: CombatCardType;
+  cost: number;
+  description: string;
+  rarity: 'common' | 'uncommon' | 'rare';
+  effect: {
+    damage?: number;
+    shield?: number;
+    special?: string;
+  };
+  requirements?: {
+    shipClass?: ShipClass[];
+    minWeaponPower?: number;
+    minShieldPower?: number;
+  };
+}
+
+export interface CombatState {
+  id: string;
+  attackerId: string;
+  defenderId: string;
+  attackerShips: Ship[];
+  defenderShips: Ship[];
+  turn: number;
+  status: 'active' | 'completed';
+  winner?: string;
+  rewards?: {
+    credits: number;
+    resources: Partial<Record<Resource, number>>;
+  };
+}
+
 export interface GameState {
   player: Corporation;
-  opponent: Corporation;
+  corporations: Corporation[];
   asteroids: Asteroid[];
   deck: Card[];
   hand: Card[];
@@ -148,8 +269,15 @@ export interface GameState {
   turn: number;
   shop: Card[];
   activeMiningOperations: ActiveMiningOperation[];
+  traders: Trader[];
   shipBuildQueue: ShipBuildOrder[];
   gameLogs: GameLog[];
+  market: {
+    prices: MarketPrice[];
+    lastRefresh: number;
+  };
+  diplomaticProposals: DiplomaticProposal[];
+  activeCombats: CombatState[];
 }
 
 export interface ActiveMiningOperation {

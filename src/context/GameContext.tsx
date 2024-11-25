@@ -5,6 +5,13 @@ import { generateInitialAsteroids, shuffleDeck, createDeckWithUniqueIds } from '
 import { createShip } from '../data/ships';
 import { equipmentList } from '../data/equipment'
 import { generateTrader } from '../data/traders';
+import { generateCorporation } from '../data/corporations';
+import { evaluateDiplomaticProposal, determineAIAction } from '../utils/aiUtils';
+
+interface GameProviderProps {
+  children: React.ReactNode;
+  initialOpponents: number;
+}
 
 const createInitialCorporation = (id: string, name: string): Corporation => {
   const basicShip = createShip('prospector', id, name);
@@ -57,6 +64,45 @@ const { deck: initialDeck, hand: initialHand } = (() => {
   };
 })();
 
+const createInitialState = (opponentCount: number): GameState => {
+  // Generate corporations
+  const playerCorp = generateCorporation('player', true);
+  const aiCorps = Array.from({ length: opponentCount }, (_, i) => 
+    generateCorporation(`corp-${i + 1}`, false, ['player'])
+  );
+  
+  // Generate asteroids (7-11 per corporation)
+  const asteroidsPerCorp = Math.floor(Math.random() * 5) + 7;
+  const totalAsteroids = asteroidsPerCorp * (opponentCount + 1);
+  
+  const { deck: initialDeck, hand: initialHand } = (() => {
+    const fullDeck = createDeckWithUniqueIds([...initialCards, ...initialCards, ...initialCards]);
+    const shuffledDeck = shuffleDeck(fullDeck);
+    return {
+      hand: shuffledDeck.slice(0, 5),
+      deck: shuffledDeck.slice(5)
+    };
+  })();
+
+  return {
+    player: playerCorp,
+    corporations: [playerCorp, ...aiCorps],
+    asteroids: generateInitialAsteroids(totalAsteroids),
+    deck: initialDeck,
+    hand: initialHand,
+    discardPile: [],
+    energy: 3,
+    maxEnergy: 3,
+    turn: 1,
+    shop: generateShopCards(),
+    activeMiningOperations: [],
+    traders: [generateTrader()],
+    shipBuildQueue: [],
+    gameLogs: [],
+    diplomaticProposals: []
+  };
+};
+
 const initialState: GameState = {
   player: createInitialCorporation('player', 'Terra Mining Corp'),
   opponent: createInitialCorporation('opponent', 'Lunar Industries'),
@@ -93,7 +139,32 @@ type GameAction =
   | { type: 'START_SHIP_BUILD'; shipClass: ShipClass }
   | { type: 'PROGRESS_SHIP_BUILD' }
   | { type: 'TRADE_WITH_TRADER'; traderId: string; resource: Resource; amount: number; totalCost: number }
-  | { type: 'UPDATE_TRADERS' };
+  | { type: 'UPDATE_TRADERS' }
+  | { 
+      type: 'PROPOSE_DIPLOMATIC_ACTION';
+      action: DiplomaticAction;
+      targetCorporationId: string;
+      terms: {
+        penalty: number;
+        duration?: number;
+        turnsToAct?: number;
+      };
+    }
+  | { type: 'ACCEPT_DIPLOMATIC_PROPOSAL'; proposalId: string; }
+  | { type: 'REJECT_DIPLOMATIC_PROPOSAL'; proposalId: string; }
+  | {
+    type: 'INITIATE_COMBAT';
+    attackerId: string;
+    defenderId: string;
+    attackerShips: Ship[];
+    defenderShips: Ship[];
+  }
+| {
+    type: 'PERFORM_COMBAT_ACTION';
+    combatId: string;
+    action: CombatAction;
+    shipIds: string[];
+  };
 
 const gameReducer = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
@@ -206,6 +277,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         newState.traders.push(generateTrader());
       }
 
+      state.corporations
+      .filter(corp => !corp.isPlayer)
+      .forEach(aiCorp => {
+        newState = processAITurn(newState, aiCorp);
+      });
+
       return {
         ...newState,
         player: {
@@ -218,6 +295,57 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         energy: state.maxEnergy,
         turn: state.turn + 1
       };
+    }
+
+    case 'PROPOSE_DIPLOMATIC_ACTION': {
+      const targetCorp = state.corporations.find(c => c.id === action.targetCorporationId);
+      if (!targetCorp) return state;
+
+      const accepted = targetCorp.isPlayer ? false : evaluateDiplomaticProposal(
+        state,
+        state.player,
+        targetCorp,
+        action.action,
+        action.terms
+      );
+
+      if (!targetCorp.isPlayer && accepted) {
+        // AI immediately accepts
+        const agreement = {
+          id: crypto.randomUUID(),
+          type: action.action,
+          parties: [state.player.id, targetCorp.id] as [string, string],
+          terms: action.terms,
+          status: 'active' as const,
+          createdAt: Date.now()
+        };
+
+        return {
+          ...state,
+          corporations: state.corporations.map(corp =>
+            corp.id === state.player.id || corp.id === targetCorp.id
+              ? { ...corp, agreements: [...corp.agreements, agreement] }
+              : corp
+          )
+        };
+      }
+
+      // Add to proposals if target is player
+      if (targetCorp.isPlayer) {
+        return {
+          ...state,
+          diplomaticProposals: [...state.diplomaticProposals, {
+            id: crypto.randomUUID(),
+            action: action.action,
+            fromCorporationId: state.player.id,
+            toCorporationId: targetCorp.id,
+            terms: action.terms,
+            createdAt: Date.now()
+          }]
+        };
+      }
+
+      return state;
     }
 
     case 'TRADE_WITH_TRADER': {
@@ -429,6 +557,68 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
     }
 
+    case 'INITIATE_COMBAT': {
+      const newCombat: CombatState = {
+        id: crypto.randomUUID(),
+        attackerId: action.attackerId,
+        defenderId: action.defenderId,
+        attackerShips: action.attackerShips,
+        defenderShips: action.defenderShips,
+        turn: 1,
+        status: 'active'
+      };
+
+      return {
+        ...state,
+        activeCombats: [...state.activeCombats, newCombat]
+      };
+    }
+
+    case 'PERFORM_COMBAT_ACTION': {
+      const combat = state.activeCombats.find(c => c.id === action.combatId);
+      if (!combat) return state;
+
+      const isAttacker = combat.attackerId === state.player.id;
+      const aiActions = determineAICombatActions(
+        isAttacker ? combat.defenderShips : combat.attackerShips
+      );
+
+      const playerActions = new Map(
+        action.shipIds.map(id => [id, action.action])
+      );
+
+      const updatedCombat = calculateCombatRound(
+        combat,
+        isAttacker ? playerActions : aiActions,
+        isAttacker ? aiActions : playerActions
+      );
+
+      return {
+        ...state,
+        activeCombats: state.activeCombats.map(c =>
+          c.id === action.combatId ? updatedCombat : c
+        ),
+        corporations: state.corporations.map(corp => {
+          const isAttacker = corp.id === combat.attackerId;
+          const isDefender = corp.id === combat.defenderId;
+          
+          if (!isAttacker && !isDefender) return corp;
+
+          const updatedShips = isAttacker
+            ? updatedCombat.attackerShips
+            : updatedCombat.defenderShips;
+
+          return {
+            ...corp,
+            ships: corp.ships.map(ship => {
+              const combatShip = updatedShips.find(s => s.id === ship.id);
+              return combatShip || ship;
+            })
+          };
+        })
+      };
+    }
+
     case 'DRAW_CARD': {
       if (state.deck.length === 0) {
         if (state.discardPile.length === 0) {
@@ -505,8 +695,8 @@ const GameContext = createContext<{
   dispatch: React.Dispatch<GameAction>;
 } | null>(null);
 
-export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(gameReducer, initialState);
+export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children, initialOpponents }) => {
+  const [state, dispatch] = useReducer(gameReducer, initialOpponents, createInitialState);
 
   return (
     <GameContext.Provider value={{ state, dispatch }}>
