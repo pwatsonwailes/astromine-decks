@@ -1,6 +1,5 @@
 export type Resource = 'iron' | 'titanium' | 'platinum' | 'water' | 'helium3';
 export type AsteroidType = 'C' | 'S' | 'M';
-export type ShipClass = 'basic' | 'medium' | 'large';
 export type EquipmentSlot = 'mining' | 'defense' | 'weapon';
 
 export interface Equipment {
@@ -16,6 +15,21 @@ export interface Equipment {
   weaponPower?: number;
 }
 
+export type ShipClass = 
+  | 'prospector' 
+  | 'harvester' 
+  | 'transporter' 
+  | 'assault-fighter'
+  | 'combat-eagle'
+  | 'scoutship'
+  | 'destructor'
+  | 'terminator'
+  | 'fleet-battleship'
+  | 'command-cruiser';
+
+export type ShipSpeed = 'slow' | 'medium' | 'fast';
+export type ShipRange = 'short' | 'medium' | 'long';
+
 export interface Ship {
   id: string;
   name: string;
@@ -26,6 +40,10 @@ export interface Ship {
   assignedAsteroidId?: string;
   health: number;
   maxHealth: number;
+  speed: ShipSpeed;
+  range: ShipRange;
+  carrierCapacity?: number;
+  carriedShips?: Ship[];
 }
 
 export interface Card {
@@ -51,6 +69,7 @@ export interface Corporation {
   resources: Record<Resource, number>;
   equippedMiningTypes: AsteroidType[];
   ships: Ship[];
+  hasAdvancedSpaceDock: boolean;
 }
 
 export interface Asteroid {
