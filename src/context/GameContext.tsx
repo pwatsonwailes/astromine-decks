@@ -3,23 +3,36 @@ import { GameState, Card, Corporation, Asteroid, Ship, Equipment, ShipClass } fr
 import { initialCards } from '../data/cards';
 import { generateInitialAsteroids, shuffleDeck, createDeckWithUniqueIds } from '../utils/gameUtils';
 import { createShip } from '../data/ships';
+import { equipmentList } from '../data/equipment'
 
-const initialCorporation: Corporation = {
-  id: 'player',
-  name: 'Terra Mining Corp',
-  health: 80,
-  maxHealth: 80,
-  credits: 200,
-  shield: 0,
-  resources: {
-    iron: 0,
-    titanium: 0,
-    platinum: 0,
-    water: 0,
-    helium3: 0
-  },
-  equippedMiningTypes: ['C'],
-  ships: [createShip('basic')] // Start with one basic ship
+const createInitialCorporation = (): Corporation => {
+  const basicShip = createShip('prospector');
+  const basicLaser = equipmentList.find(eq => eq.id === 'basic-mining-laser')!;
+  
+  return {
+    id: 'player',
+    name: 'Terra Mining Corp',
+    health: 80,
+    maxHealth: 80,
+    credits: 200,
+    shield: 0,
+    resources: {
+      iron: 0,
+      titanium: 0,
+      platinum: 0,
+      water: 0,
+      helium3: 0
+    },
+    equippedMiningTypes: ['C'],
+    ships: [{
+      ...basicShip,
+      equipment: {
+        ...basicShip.equipment,
+        mining: [basicLaser]
+      }
+    }],
+    hasAdvancedSpaceDock: false
+  };
 };
 
 const generateShopCards = () => {
@@ -31,6 +44,8 @@ const generateShopCards = () => {
       price: Math.floor(Math.random() * 30) + 20
     }));
 };
+
+const initialCorporation: Corporation = createInitialCorporation()
 
 const { deck: initialDeck, hand: initialHand } = (() => {
   const fullDeck = createDeckWithUniqueIds([...initialCards, ...initialCards, ...initialCards]);
@@ -73,7 +88,8 @@ type GameAction =
   | { type: 'BUY_EQUIPMENT'; equipment: Equipment; shipId: string }
   | { type: 'REMOVE_EQUIPMENT'; equipmentId: string; shipId: string }
   | { type: 'ASSIGN_SHIP'; shipId: string; asteroidId: string }
-  | { type: 'RECALL_SHIP'; shipId: string };
+  | { type: 'RECALL_SHIP'; shipId: string }
+  | { type: 'UPGRADE_SPACE_DOCK' };
 
 const gameReducer = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
@@ -81,6 +97,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const newShip = createShip(action.shipClass);
       const cost = newShip.cost;
 
+      // Check if player has appropriate space dock for ship type
+      const isBasicShip = ['prospector', 'assault-fighter', 'scoutship'].includes(action.shipClass);
+      if (!isBasicShip && !state.player.hasAdvancedSpaceDock) return state;
       if (state.player.credits < cost) return state;
 
       return {
@@ -89,6 +108,19 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           ...state.player,
           credits: state.player.credits - cost,
           ships: [...state.player.ships, newShip]
+        }
+      };
+    }
+
+    case 'UPGRADE_SPACE_DOCK': {
+      if (state.player.hasAdvancedSpaceDock || state.player.credits < 300) return state;
+
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          credits: state.player.credits - 300,
+          hasAdvancedSpaceDock: true
         }
       };
     }
