@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { Asteroid, Ship } from '../types/game';
 import { ArrowUpDown, Ship as ShipIcon } from 'lucide-react';
+import { AsteroidDetails } from './AsteroidDetails';
 
 type SortField = 'name' | 'type' | 'health' | 'difficulty';
 type SortDirection = 'asc' | 'desc';
@@ -11,6 +12,7 @@ export const AsteroidMap: React.FC = () => {
   const [selectedAsteroid, setSelectedAsteroid] = useState<Asteroid | null>(null);
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [showDetails, setShowDetails] = useState<Asteroid | null>(null);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -59,6 +61,10 @@ export const AsteroidMap: React.FC = () => {
     return state.player.ships.filter(ship => !ship.assignedAsteroidId);
   };
 
+  const handleRowClick = (asteroid: Asteroid) => {
+    setShowDetails(asteroid);
+  };
+
   const SortHeader: React.FC<{ field: SortField; label: string }> = ({ field, label }) => (
     <th
       className="px-4 py-2 cursor-pointer hover:bg-gray-700"
@@ -91,7 +97,11 @@ export const AsteroidMap: React.FC = () => {
             {sortedAsteroids.map(asteroid => {
               const assignedShips = getAssignedShips(asteroid.id);
               return (
-                <tr key={asteroid.id} className="border-b border-gray-700 hover:bg-gray-700/50">
+                <tr 
+                  key={asteroid.id} 
+                  className="border-b border-gray-700 hover:bg-gray-700/50 cursor-pointer"
+                  onClick={() => handleRowClick(asteroid)}
+                >
                   <td className="px-4 py-3">{asteroid.name}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-sm
@@ -129,7 +139,10 @@ export const AsteroidMap: React.FC = () => {
                             <ShipIcon size={16} />
                             <span className="text-sm">{ship.name}</span>
                             <button
-                              onClick={() => handleRecallShip(ship.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRecallShip(ship.id);
+                              }}
                               className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded"
                             >
                               Recall
@@ -143,7 +156,10 @@ export const AsteroidMap: React.FC = () => {
                   </td>
                   <td className="px-4 py-3">
                     <button
-                      onClick={() => handleAssignShip(asteroid)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAssignShip(asteroid);
+                      }}
                       className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
                     >
                       Send Ship
@@ -196,6 +212,15 @@ export const AsteroidMap: React.FC = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Asteroid Details Modal */}
+      {showDetails && (
+        <AsteroidDetails
+          asteroid={showDetails}
+          ships={getAssignedShips(showDetails.id)}
+          onClose={() => setShowDetails(null)}
+        />
       )}
     </div>
   );
