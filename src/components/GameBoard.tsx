@@ -5,10 +5,11 @@ import { StatusPanel } from './StatusPanel';
 import { ResourcePanel } from './ResourcePanel';
 import { Shop } from './Shop';
 import { ShipManagement } from './ShipManagement';
+import { SpaceDock } from './SpaceDock';
 import { AsteroidMap } from './AsteroidMap';
-import { LayoutDashboard, Rocket, CreditCard, Mountain, Boxes } from 'lucide-react';
+import { LayoutDashboard, Rocket, CreditCard, Mountain, Boxes, Warehouse } from 'lucide-react';
 
-type Tab = 'overview' | 'asteroids' | 'ships' | 'shop' | 'hand';
+type Tab = 'overview' | 'asteroids' | 'ships' | 'spacedock' | 'shop' | 'hand';
 
 export const GameBoard: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -41,11 +42,12 @@ export const GameBoard: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Navigation */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          <TabButton tab="overview" icon={<LayoutDashboard size={20} />} />
-          <TabButton tab="asteroids" icon={<Mountain size={20} />} />
-          <TabButton tab="ships" icon={<Rocket size={20} />} />
-          <TabButton tab="shop" icon={<CreditCard size={20} />} />
-          <TabButton tab="hand" icon={<Boxes size={20} />} />
+          <TabButton tab="overview" icon={<LayoutDashboard size={20} />} label="Overview" />
+          <TabButton tab="asteroids" icon={<Mountain size={20} />} label="Asteroids" />
+          <TabButton tab="ships" icon={<Rocket size={20} />} label="Ships" />
+          <TabButton tab="spacedock" icon={<Warehouse size={20} />} label="Space Dock" />
+          <TabButton tab="shop" icon={<CreditCard size={20} />} label="Shop" />
+          <TabButton tab="hand" icon={<Boxes size={20} />} label="Hand" />
         </div>
 
         {/* Content */}
@@ -60,6 +62,8 @@ export const GameBoard: React.FC = () => {
           {activeTab === 'asteroids' && <AsteroidMap />}
           
           {activeTab === 'ships' && <ShipManagement />}
+          
+          {activeTab === 'spacedock' && <SpaceDock />}
           
           {activeTab === 'shop' && <Shop />}
 
