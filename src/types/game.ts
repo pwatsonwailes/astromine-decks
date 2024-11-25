@@ -104,6 +104,22 @@ export interface Asteroid {
   };
 }
 
+export interface ShipBuildOrder {
+  id: string;
+  shipClass: ShipClass;
+  turnsRemaining: number;
+  totalTurns: number;
+  cost: number;
+}
+
+export interface GameLog {
+  id: string;
+  turn: number;
+  messages: string[];
+  resourceChanges?: Partial<Record<Resource, number>>;
+  creditChange?: number;
+}
+
 export interface GameState {
   player: Corporation;
   opponent: Corporation;
@@ -116,6 +132,8 @@ export interface GameState {
   turn: number;
   shop: Card[];
   activeMiningOperations: ActiveMiningOperation[];
+  shipBuildQueue: ShipBuildOrder[];
+  gameLogs: GameLog[];
 }
 
 export interface ActiveMiningOperation {

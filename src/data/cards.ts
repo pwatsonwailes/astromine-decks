@@ -8,7 +8,6 @@ export const initialCards: Card[] = [
     cost: 1,
     description: 'Deal 6 damage to the asteroid. Compatible with C-type asteroids.',
     rarity: 'common',
-    image: 'https://images.unsplash.com/photo-1614728894747-a83421789f10?auto=format&fit=crop&q=80&w=1600',
     asteroidTypeRequirement: 'C',
     miningPower: 50,
     effect: (state: GameState) => {
