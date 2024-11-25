@@ -82,6 +82,22 @@ export interface Corporation {
   hasAdvancedSpaceDock: boolean;
 }
 
+export interface Trader {
+  id: string;
+  name: string;
+  description: string;
+  inventory: TraderInventory[];
+  turnsRemaining: number;
+  nextAppearance?: number;
+}
+
+export interface TraderInventory {
+  resource: Resource;
+  amount: number;
+  priceMultiplier: number; // Base price multiplier
+  volatility: number; // Price fluctuation (0-1)
+}
+
 // Add new types for asteroid composition
 export type AsteroidComposition = {
   resource: Resource;

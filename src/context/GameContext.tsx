@@ -4,6 +4,7 @@ import { initialCards } from '../data/cards';
 import { generateInitialAsteroids, shuffleDeck, createDeckWithUniqueIds } from '../utils/gameUtils';
 import { createShip } from '../data/ships';
 import { equipmentList } from '../data/equipment'
+import { generateTrader } from '../data/traders';
 
 const createInitialCorporation = (id: string, name: string): Corporation => {
   const basicShip = createShip('prospector', id, name);
@@ -68,6 +69,7 @@ const initialState: GameState = {
   turn: 1,
   shop: generateShopCards(),
   activeMiningOperations: [],
+  traders: [generateTrader()], // Start with one trader
   shipBuildQueue: [],
   gameLogs: []
 };
@@ -89,7 +91,9 @@ type GameAction =
   | { type: 'RECALL_SHIP'; shipId: string }
   | { type: 'UPGRADE_SPACE_DOCK' }
   | { type: 'START_SHIP_BUILD'; shipClass: ShipClass }
-  | { type: 'PROGRESS_SHIP_BUILD' };
+  | { type: 'PROGRESS_SHIP_BUILD' }
+  | { type: 'TRADE_WITH_TRADER'; traderId: string; resource: Resource; amount: number; totalCost: number }
+  | { type: 'UPDATE_TRADERS' };
 
 const gameReducer = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
@@ -190,6 +194,18 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         ];
       }
 
+      newState.traders = newState.traders
+        .map(trader => ({
+          ...trader,
+          turnsRemaining: trader.turnsRemaining - 1
+        }))
+        .filter(trader => trader.turnsRemaining > 0);
+
+      // Check for new traders
+      if (Math.random() < 0.2) { // 20% chance each turn
+        newState.traders.push(generateTrader());
+      }
+
       return {
         ...newState,
         player: {
@@ -201,6 +217,42 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         gameLogs: [...newState.gameLogs, turnLog],
         energy: state.maxEnergy,
         turn: state.turn + 1
+      };
+    }
+
+    case 'TRADE_WITH_TRADER': {
+      const trader = state.traders.find(t => t.id === action.traderId);
+      if (!trader) return state;
+
+      const updatedTraders = state.traders.map(t => {
+        if (t.id === action.traderId) {
+          return {
+            ...t,
+            inventory: t.inventory.map(item => {
+              if (item.resource === action.resource) {
+                return {
+                  ...item,
+                  amount: item.amount - action.amount
+                };
+              }
+              return item;
+            })
+          };
+        }
+        return t;
+      });
+
+      return {
+        ...state,
+        traders: updatedTraders,
+        player: {
+          ...state.player,
+          credits: state.player.credits - action.totalCost,
+          resources: {
+            ...state.player.resources,
+            [action.resource]: (state.player.resources[action.resource] || 0) + action.amount
+          }
+        }
       };
     }
 

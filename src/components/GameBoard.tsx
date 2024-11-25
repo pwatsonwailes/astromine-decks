@@ -10,9 +10,11 @@ import { AsteroidMap } from './AsteroidMap';
 import { Trading } from './Trading';
 import { GameLog } from './GameLog';
 import { TurnCounter } from './TurnCounter';
-import { LayoutDashboard, Rocket, CreditCard, Mountain, Boxes, Warehouse, TrendingUp, ScrollText } from 'lucide-react';
+import { MarketTraders } from './MarketTraders';
 
-type Tab = 'overview' | 'asteroids' | 'ships' | 'spacedock' | 'shop' | 'trading' | 'hand' | 'log';
+import { LayoutDashboard, Store, Rocket, CreditCard, Mountain, Boxes, Warehouse, TrendingUp, ScrollText } from 'lucide-react';
+
+type Tab = 'overview' | 'asteroids' | 'ships' | 'spacedock' | 'shop' | 'market' | 'trading' | 'hand' | 'log';
 
 export const GameBoard: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -57,6 +59,7 @@ export const GameBoard: React.FC = () => {
             <TabButton tab="spacedock" icon={<Warehouse size={20} />} />
             <TabButton tab="shop" icon={<CreditCard size={20} />} />
             <TabButton tab="trading" icon={<TrendingUp size={20} />} />
+            <TabButton tab="market" icon={<Store size={20} />} />
             <TabButton tab="hand" icon={<Boxes size={20} />} />
             <TabButton tab="log" icon={<ScrollText size={20} />} />
           </div>
@@ -81,6 +84,8 @@ export const GameBoard: React.FC = () => {
           {activeTab === 'shop' && <Shop />}
 
           {activeTab === 'trading' && <Trading />}
+
+          {activeTab === 'market' && <MarketTraders />}
 
           {activeTab === 'log' && <GameLog />}
 
