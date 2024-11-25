@@ -67,7 +67,9 @@ const initialState: GameState = {
   maxEnergy: 3,
   turn: 1,
   shop: generateShopCards(),
-  activeMiningOperations: []
+  activeMiningOperations: [],
+  shipBuildQueue: [],
+  gameLogs: []
 };
 
 type GameAction = 
@@ -85,10 +87,153 @@ type GameAction =
   | { type: 'REMOVE_EQUIPMENT'; equipmentId: string; shipId: string }
   | { type: 'ASSIGN_SHIP'; shipId: string; asteroidId: string }
   | { type: 'RECALL_SHIP'; shipId: string }
-  | { type: 'UPGRADE_SPACE_DOCK' };
+  | { type: 'UPGRADE_SPACE_DOCK' }
+  | { type: 'START_SHIP_BUILD'; shipClass: ShipClass }
+  | { type: 'PROGRESS_SHIP_BUILD' };
 
 const gameReducer = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
+    case 'END_TURN': {
+      let newState = { ...state };
+      const prevResources = { ...state.player.resources };
+      const newResources = { ...state.player.resources };
+      
+      // Process mining operations
+      newState.asteroids = newState.asteroids.map(asteroid => {
+        const ships = state.player.ships.filter(ship => 
+          ship.assignedAsteroidId === asteroid.id
+        );
+
+        if (asteroid.health <= 0 || ships.length === 0) {
+          return asteroid;
+        }
+
+        const updatedComposition = asteroid.composition.map(comp => ({
+          ...comp,
+          amount: comp.amount
+        }));
+
+        ships.forEach(ship => {
+          const totalMiningPower = ship.equipment.mining.reduce(
+            (total, equip) => total + (equip.miningPower || 0), 0
+          );
+
+          if (totalMiningPower > 0) {
+            const miningEfficiency = totalMiningPower * 0.1;
+
+            updatedComposition.forEach(comp => {
+              const minedAmount = Math.min(
+                Math.floor(miningEfficiency),
+                comp.amount
+              );
+
+              if (minedAmount > 0) {
+                newResources[comp.resource] = (newResources[comp.resource] || 0) + minedAmount;
+                comp.amount -= minedAmount;
+              }
+            });
+          }
+        });
+
+        const newHealth = Math.max(0, asteroid.health - ships.length);
+
+        return {
+          ...asteroid,
+          health: newHealth,
+          composition: updatedComposition
+        };
+      });
+
+      // Process ship building
+      const { completedShips, remainingQueue } = newState.shipBuildQueue.reduce(
+        (acc, order) => {
+          if (order.turnsRemaining <= 1) {
+            acc.completedShips.push(createShip(order.shipClass, state.player.id, state.player.name));
+          } else {
+            acc.remainingQueue.push({
+              ...order,
+              turnsRemaining: order.turnsRemaining - 1
+            });
+          }
+          return acc;
+        },
+        { completedShips: [] as Ship[], remainingQueue: [] as ShipBuildOrder[] }
+      );
+
+      // Calculate resource changes for the log
+      const resourceChanges: Partial<Record<Resource, number>> = {};
+      Object.entries(newResources).forEach(([resource, amount]) => {
+        const diff = amount - (prevResources[resource as Resource] || 0);
+        if (diff !== 0) {
+          resourceChanges[resource as Resource] = diff;
+        }
+      });
+
+      // Create turn log
+      const turnLog: GameLog = {
+        id: crypto.randomUUID(),
+        turn: state.turn,
+        messages: [
+          ...completedShips.map(ship => `Completed construction of ${ship.name}`),
+          ...Object.entries(resourceChanges).map(([resource, amount]) => 
+            `Mined ${amount} ${resource}`
+          )
+        ],
+        resourceChanges
+      };
+
+      // Generate new asteroids if needed
+      if (newState.asteroids.filter(a => a.health > 0).length < 3) {
+        newState.asteroids = [
+          ...newState.asteroids,
+          ...generateInitialAsteroids(2)
+        ];
+      }
+
+      return {
+        ...newState,
+        player: {
+          ...newState.player,
+          resources: newResources,
+          ships: [...newState.player.ships, ...completedShips]
+        },
+        shipBuildQueue: remainingQueue,
+        gameLogs: [...newState.gameLogs, turnLog],
+        energy: state.maxEnergy,
+        turn: state.turn + 1
+      };
+    }
+
+    case 'START_SHIP_BUILD': {
+      const template = shipTemplates[action.shipClass];
+      const buildTime = shipBuildTimes[action.shipClass];
+      
+      if (state.player.credits < template.cost) return state;
+
+      const buildOrder: ShipBuildOrder = {
+        id: crypto.randomUUID(),
+        shipClass: action.shipClass,
+        turnsRemaining: buildTime,
+        totalTurns: buildTime,
+        cost: template.cost
+      };
+
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          credits: state.player.credits - template.cost
+        },
+        shipBuildQueue: [...state.shipBuildQueue, buildOrder],
+        gameLogs: [...state.gameLogs, {
+          id: crypto.randomUUID(),
+          turn: state.turn,
+          messages: [`Started construction of ${action.shipClass}`],
+          creditChange: -template.cost
+        }]
+      };
+    }
+
     case 'BUY_SHIP': {
       const newShip = createShip(action.shipClass, state.player.id, state.player.name);
       const cost = newShip.cost;
@@ -232,7 +377,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
     }
 
-    // ... existing reducer cases ...
     case 'DRAW_CARD': {
       if (state.deck.length === 0) {
         if (state.discardPile.length === 0) {
@@ -298,67 +442,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         }
       };
     }
-
-    case 'END_TURN': {
-      let newState = { ...state };
-      
-      // Process mining operations
-      newState.asteroids = newState.asteroids.map(asteroid => {
-        const ships = state.player.ships.filter(ship => 
-          ship.assignedAsteroidId === asteroid.id
-        );
-
-        if (asteroid.health > 0 && ships.length > 0) {
-          const updatedComposition = [...asteroid.composition];
-          
-          ships.forEach(ship => {
-            const totalMiningPower = ship.equipment.mining.reduce(
-              (total, equip) => total + (equip.miningPower || 0), 0
-            );
-
-            if (totalMiningPower > 0) {
-              updatedComposition.forEach(comp => {
-                const minedAmount = Math.floor((totalMiningPower / 100) * comp.amount * 0.1);
-                if (minedAmount > 0) {
-                  newState.player.resources[comp.resource] += minedAmount;
-                  comp.amount -= minedAmount;
-                }
-              });
-              
-              // Reduce asteroid health based on mining power
-              asteroid.health = Math.max(0, asteroid.health - totalMiningPower);
-            }
-          });
-
-          return {
-            ...asteroid,
-            composition: updatedComposition
-          };
-        }
-
-        return asteroid;
-      });
-
-      // Generate new asteroids if needed
-      if (newState.asteroids.filter(a => a.health > 0).length < 3) {
-        newState.asteroids = [
-          ...newState.asteroids,
-          ...generateInitialAsteroids(2)
-        ];
-      }
-
-      return {
-        ...newState,
-        energy: state.maxEnergy,
-        turn: state.turn + 1
-      };
-    }
-
-    case 'PURCHASE_CARD':
-    case 'RECALL_MINING_OPERATION':
-    case 'REFRESH_SHOP':
-      // ... existing cases remain the same ...
-      return state;
 
     default:
       return state;

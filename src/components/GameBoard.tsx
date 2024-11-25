@@ -8,22 +8,29 @@ import { ShipManagement } from './ShipManagement';
 import { SpaceDock } from './SpaceDock';
 import { AsteroidMap } from './AsteroidMap';
 import { Trading } from './Trading';
-import { LayoutDashboard, Rocket, CreditCard, Mountain, Boxes, Warehouse, TrendingUp } from 'lucide-react';
+import { GameLog } from './GameLog';
+import { TurnCounter } from './TurnCounter';
+import { LayoutDashboard, Rocket, CreditCard, Mountain, Boxes, Warehouse, TrendingUp, ScrollText } from 'lucide-react';
 
-type Tab = 'overview' | 'asteroids' | 'ships' | 'spacedock' | 'shop' | 'trading' | 'hand';
+type Tab = 'overview' | 'asteroids' | 'ships' | 'spacedock' | 'shop' | 'trading' | 'hand' | 'log';
 
 export const GameBoard: React.FC = () => {
   const { state, dispatch } = useGame();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [isEndingTurn, setIsEndingTurn] = useState(false);
 
   const handleEndTurn = () => {
-    dispatch({ type: 'END_TURN' });
-    if (state.shop.length < 3) {
-      dispatch({ type: 'REFRESH_SHOP' });
-    }
+    setIsEndingTurn(true);
+    setTimeout(() => {
+      dispatch({ type: 'END_TURN' });
+      if (state.shop.length < 3) {
+        dispatch({ type: 'REFRESH_SHOP' });
+      }
+      setIsEndingTurn(false);
+    }, 1000);
   };
 
-  const TabButton: React.FC<{ tab: Tab; icon: React.ReactNode; label: string }> = ({
+  const TabButton: React.FC<{ tab: Tab; icon: React.ReactNode }> = ({
     tab,
     icon
   }) => (
@@ -42,14 +49,18 @@ export const GameBoard: React.FC = () => {
     <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Navigation */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          <TabButton tab="overview" icon={<LayoutDashboard size={20} />} label="Overview" />
-          <TabButton tab="asteroids" icon={<Mountain size={20} />} label="Asteroids" />
-          <TabButton tab="ships" icon={<Rocket size={20} />} label="Ships" />
-          <TabButton tab="spacedock" icon={<Warehouse size={20} />} label="Space Dock" />
-          <TabButton tab="shop" icon={<CreditCard size={20} />} label="Shop" />
-          <TabButton tab="trading" icon={<TrendingUp size={20} />} label="Trading" />
-          <TabButton tab="hand" icon={<Boxes size={20} />} label="Hand" />
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            <TabButton tab="overview" icon={<LayoutDashboard size={20} />} />
+            <TabButton tab="asteroids" icon={<Mountain size={20} />} />
+            <TabButton tab="ships" icon={<Rocket size={20} />} />
+            <TabButton tab="spacedock" icon={<Warehouse size={20} />} />
+            <TabButton tab="shop" icon={<CreditCard size={20} />} />
+            <TabButton tab="trading" icon={<TrendingUp size={20} />} />
+            <TabButton tab="hand" icon={<Boxes size={20} />} />
+            <TabButton tab="log" icon={<ScrollText size={20} />} />
+          </div>
+          <TurnCounter turn={state.turn} isAnimating={isEndingTurn} />
         </div>
 
         {/* Content */}
@@ -71,6 +82,8 @@ export const GameBoard: React.FC = () => {
 
           {activeTab === 'trading' && <Trading />}
 
+          {activeTab === 'log' && <GameLog />}
+
           {activeTab === 'hand' && (
             <div className="bg-gray-800 rounded-lg p-6">
               <div className="flex justify-between items-center mb-4">
@@ -79,9 +92,10 @@ export const GameBoard: React.FC = () => {
                   <span className="text-blue-300">Energy: {state.energy} / {state.maxEnergy}</span>
                   <button
                     onClick={handleEndTurn}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg"
+                    disabled={isEndingTurn}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white font-bold py-2 px-6 rounded-lg transition-colors"
                   >
-                    End Turn
+                    {isEndingTurn ? 'Ending Turn...' : 'End Turn'}
                   </button>
                 </div>
               </div>
@@ -100,9 +114,10 @@ export const GameBoard: React.FC = () => {
             <span className="text-blue-300">Energy: {state.energy} / {state.maxEnergy}</span>
             <button
               onClick={handleEndTurn}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg"
+              disabled={isEndingTurn}
+              className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white font-bold py-2 px-6 rounded-lg transition-colors"
             >
-              End Turn
+              {isEndingTurn ? 'Ending Turn...' : 'End Turn'}
             </button>
           </div>
         )}

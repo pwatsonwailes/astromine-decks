@@ -48,7 +48,7 @@ export const Trading: React.FC = () => {
                   {[1, 5, 10, amount].map((sellAmount) => (
                     sellAmount <= amount && (
                       <button
-                        key={sellAmount}
+                        key={`${resource}-${sellAmount}`}
                         onClick={() => handleSellResource(resource, sellAmount)}
                         className="flex-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm flex items-center justify-center gap-1"
                       >

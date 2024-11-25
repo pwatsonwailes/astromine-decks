@@ -154,6 +154,34 @@ export const ShipManagement: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Ship Build Queue */}
+      {state.shipBuildQueue.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-xl font-bold mb-4">Construction Queue</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {state.shipBuildQueue.map(order => (
+              <div key={order.id} className="bg-gray-700 p-4 rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="capitalize font-semibold">
+                    {order.shipClass.replace('-', ' ')}
+                  </span>
+                  <span className="text-sm">
+                    {order.turnsRemaining} turns remaining
+                  </span>
+                </div>
+                <div className="w-full bg-gray-600 rounded-full h-2">
+                  <div
+                    className="bg-blue-500 rounded-full h-2 transition-all duration-300"
+                    style={{
+                      width: `${((order.totalTurns - order.turnsRemaining) / order.totalTurns) * 100}%`
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

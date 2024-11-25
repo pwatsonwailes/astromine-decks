@@ -101,6 +101,19 @@ const shipNames: Record<ShipClass, string[]> = {
   'command-cruiser': ['Command', 'Admiral', 'Overlord']
 };
 
+export const shipBuildTimes: Record<ShipClass, number> = {
+  prospector: 2,
+  harvester: 3,
+  transporter: 4,
+  'assault-fighter': 2,
+  'combat-eagle': 3,
+  scoutship: 2,
+  destructor: 4,
+  terminator: 5,
+  'fleet-battleship': 6,
+  'command-cruiser': 7
+};
+
 export const createShip = (className: ShipClass, ownerId: string, ownerName: string): Ship => {
   const template = shipTemplates[className];
   const names = shipNames[className];
