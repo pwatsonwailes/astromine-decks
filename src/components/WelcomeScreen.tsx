@@ -1,11 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Rocket, Gem } from 'lucide-react';
+import { CorporationSelect } from './CorporationSelect';
 
 interface WelcomeScreenProps {
-  onStartGame: () => void;
+  onStartGame: (opponentCount: number) => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartGame }) => {
+  const [showSelect, setShowSelect] = useState(false);
+
+  if (showSelect) {
+    return <CorporationSelect onSelect={onStartGame} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full text-center space-y-8">
@@ -26,12 +33,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartGame }) => 
             <li>• Command mining ships and harvest valuable resources</li>
             <li>• Upgrade your fleet with advanced equipment</li>
             <li>• Manage your corporation's growth and expansion</li>
-            <li>• Compete for the most valuable asteroid deposits</li>
+            <li>• Compete or cooperate with rival corporations</li>
+            <li>• Form alliances and negotiate diplomatic agreements</li>
           </ul>
         </div>
 
         <button
-          onClick={onStartGame}
+          onClick={() => setShowSelect(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-colors"
         >
           Start New Game
