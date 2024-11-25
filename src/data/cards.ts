@@ -1,5 +1,4 @@
 import { Card, GameState } from '../types/game';
-import { calculateMiningYield } from '../utils/gameUtils';
 
 export const initialCards: Card[] = [
   {
@@ -14,21 +13,38 @@ export const initialCards: Card[] = [
     miningPower: 50,
     effect: (state: GameState) => {
       if (!state.currentAsteroid) return state;
-      const miningYield = calculateMiningYield(
-        state.currentAsteroid,
-        50,
-        state.player.equippedMiningTypes
-      );
+
+      // Check asteroid type compatibility
+      if (!state.player.equippedMiningTypes.includes(state.currentAsteroid.type)) {
+        return state;
+      }
+
+      // Calculate mining results
+      const updatedComposition = state.currentAsteroid.composition.map(comp => ({
+        ...comp,
+        amount: Math.max(0, comp.amount - Math.floor(50 * 0.1))
+      }));
+
+      // Update player's resources
+      const newResources = { ...state.player.resources };
+      updatedComposition.forEach((comp, index) => {
+        const originalAmount = state.currentAsteroid!.composition[index].amount;
+        const minedAmount = originalAmount - comp.amount;
+        if (minedAmount > 0) {
+          newResources[comp.resource] = (newResources[comp.resource] || 0) + minedAmount;
+        }
+      });
       
       return {
         ...state,
         currentAsteroid: {
           ...state.currentAsteroid,
-          health: state.currentAsteroid.health - 6
+          health: Math.max(0, state.currentAsteroid.health - 6),
+          composition: updatedComposition
         },
         player: {
           ...state.player,
-          credits: state.player.credits + miningYield
+          resources: newResources
         }
       };
     }
@@ -76,21 +92,33 @@ export const initialCards: Card[] = [
     miningPower: 75,
     effect: (state: GameState) => {
       if (!state.currentAsteroid) return state;
-      const miningYield = calculateMiningYield(
-        state.currentAsteroid,
-        75,
-        state.player.equippedMiningTypes
-      );
+
+      // Calculate mining results with higher efficiency
+      const updatedComposition = state.currentAsteroid.composition.map(comp => ({
+        ...comp,
+        amount: Math.max(0, comp.amount - Math.floor(75 * 0.1))
+      }));
+
+      // Update player's resources
+      const newResources = { ...state.player.resources };
+      updatedComposition.forEach((comp, index) => {
+        const originalAmount = state.currentAsteroid!.composition[index].amount;
+        const minedAmount = originalAmount - comp.amount;
+        if (minedAmount > 0) {
+          newResources[comp.resource] = (newResources[comp.resource] || 0) + minedAmount;
+        }
+      });
       
       return {
         ...state,
         currentAsteroid: {
           ...state.currentAsteroid,
-          health: state.currentAsteroid.health - 10
+          health: Math.max(0, state.currentAsteroid.health - 10),
+          composition: updatedComposition
         },
         player: {
           ...state.player,
-          credits: state.player.credits + miningYield
+          resources: newResources
         }
       };
     }

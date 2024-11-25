@@ -308,32 +308,43 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           ship.assignedAsteroidId === asteroid.id
         );
 
-        // Calculate mining results
-        ships.forEach(ship => {
-          const totalMiningPower = ship.equipment.mining.reduce(
-            (total, equip) => total + (equip.miningPower || 0), 0
-          );
+        if (asteroid.health > 0 && ships.length > 0) {
+          const updatedComposition = [...asteroid.composition];
+          
+          ships.forEach(ship => {
+            const totalMiningPower = ship.equipment.mining.reduce(
+              (total, equip) => total + (equip.miningPower || 0), 0
+            );
 
-          // Mine resources based on composition
-          asteroid.composition.forEach(comp => {
-            const minedAmount = Math.floor((totalMiningPower / 100) * comp.amount * 0.1);
-            if (minedAmount > 0) {
-              newState.player.resources[comp.resource] = 
-                (newState.player.resources[comp.resource] || 0) + minedAmount;
-              comp.amount -= minedAmount;
+            if (totalMiningPower > 0) {
+              updatedComposition.forEach(comp => {
+                const minedAmount = Math.floor((totalMiningPower / 100) * comp.amount * 0.1);
+                if (minedAmount > 0) {
+                  newState.player.resources[comp.resource] += minedAmount;
+                  comp.amount -= minedAmount;
+                }
+              });
+              
+              // Reduce asteroid health based on mining power
+              asteroid.health = Math.max(0, asteroid.health - totalMiningPower);
             }
           });
 
-          asteroid.health = Math.max(0, asteroid.health - totalMiningPower);
-        });
+          return {
+            ...asteroid,
+            composition: updatedComposition
+          };
+        }
 
         return asteroid;
       });
 
-      // Rest of the END_TURN logic...
-      const cardsToDraw = 5 - newState.hand.length;
-      for (let i = 0; i < cardsToDraw; i++) {
-        newState = gameReducer(newState, { type: 'DRAW_CARD' });
+      // Generate new asteroids if needed
+      if (newState.asteroids.filter(a => a.health > 0).length < 3) {
+        newState.asteroids = [
+          ...newState.asteroids,
+          ...generateInitialAsteroids(2)
+        ];
       }
 
       return {
