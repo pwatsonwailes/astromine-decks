@@ -1,22 +1,15 @@
-import { Asteroid, Resource, Card, AsteroidType } from '../types/game';
+import { Asteroid, Resource, Card, AsteroidType, AsteroidComposition } from '../types/game';
+import { resourceBaseValues } from '../data/resources';
 
 const asteroidNames = [
   'Ceres Prime', 'Vesta Major', 'Pallas-IX', 'Hygiea Belt', 
   'Psyche Core', 'Eros Fragment', 'Ida Cluster'
 ];
 
-const resourceWeights: Record<Resource, number> = {
-  iron: 0.4,
-  titanium: 0.3,
-  platinum: 0.15,
-  water: 0.1,
-  helium3: 0.05
-};
-
-const asteroidTypeData: Record<AsteroidType, { baseYield: number; resourceMultiplier: number }> = {
-  'C': { baseYield: 10, resourceMultiplier: 1 },
-  'S': { baseYield: 20, resourceMultiplier: 2 },
-  'M': { baseYield: 35, resourceMultiplier: 3 }
+const asteroidTypeComposition: Record<AsteroidType, Resource[]> = {
+  'C': ['silicates', 'oxides', 'sulfides'],
+  'M': ['iron', 'nickel'],
+  'S': ['iron', 'silicon', 'magnesium']
 };
 
 // Map dimensions
@@ -25,29 +18,27 @@ export const MAP_HEIGHT = 1500;
 export const VIEWPORT_WIDTH = 800;
 export const VIEWPORT_HEIGHT = 600;
 
+const generateComposition = (type: AsteroidType, difficulty: number): AsteroidComposition[] => {
+  const resources = asteroidTypeComposition[type];
+  return resources.map(resource => ({
+    resource,
+    amount: Math.floor(Math.random() * difficulty * 50) + 20,
+    baseValue: resourceBaseValues[resource]
+  }));
+};
+
 export const generateAsteroid = (difficulty: number): Asteroid => {
-  const resources: Partial<Record<Resource, number>> = {};
-  const resourceEntries = Object.entries(resourceWeights) as [Resource, number][];
   const type = selectAsteroidType(difficulty);
-  const multiplier = asteroidTypeData[type].resourceMultiplier;
   const health = 20 + difficulty * 10;
   
-  resourceEntries.forEach(([resource, weight]) => {
-    if (Math.random() < weight) {
-      resources[resource] = Math.floor(Math.random() * difficulty * 10 * multiplier) + 5;
-    }
-  });
-
-  // Ensure asteroid position is within map boundaries
   return {
     id: crypto.randomUUID(),
     name: asteroidNames[Math.floor(Math.random() * asteroidNames.length)],
     health,
     maxHealth: health,
-    resources,
+    composition: generateComposition(type, difficulty),
     difficulty,
     type,
-    baseYield: asteroidTypeData[type].baseYield * difficulty,
     position: {
       x: Math.random() * (MAP_WIDTH - 100) + 50, // 50px padding from edges
       y: Math.random() * (MAP_HEIGHT - 100) + 50
@@ -85,13 +76,4 @@ export const shuffleDeck = (deck: Card[]): Card[] => {
     [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
   }
   return newDeck;
-};
-
-export const calculateMiningYield = (
-  asteroid: Asteroid,
-  miningPower: number,
-  equippedTypes: AsteroidType[]
-): number => {
-  if (!equippedTypes.includes(asteroid.type)) return 0;
-  return Math.floor(asteroid.baseYield * (miningPower / 100));
 };
