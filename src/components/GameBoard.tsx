@@ -7,9 +7,10 @@ import { Shop } from './Shop';
 import { ShipManagement } from './ShipManagement';
 import { SpaceDock } from './SpaceDock';
 import { AsteroidMap } from './AsteroidMap';
-import { LayoutDashboard, Rocket, CreditCard, Mountain, Boxes, Warehouse } from 'lucide-react';
+import { Trading } from './Trading';
+import { LayoutDashboard, Rocket, CreditCard, Mountain, Boxes, Warehouse, TrendingUp } from 'lucide-react';
 
-type Tab = 'overview' | 'asteroids' | 'ships' | 'spacedock' | 'shop' | 'hand';
+type Tab = 'overview' | 'asteroids' | 'ships' | 'spacedock' | 'shop' | 'trading' | 'hand';
 
 export const GameBoard: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -47,6 +48,7 @@ export const GameBoard: React.FC = () => {
           <TabButton tab="ships" icon={<Rocket size={20} />} label="Ships" />
           <TabButton tab="spacedock" icon={<Warehouse size={20} />} label="Space Dock" />
           <TabButton tab="shop" icon={<CreditCard size={20} />} label="Shop" />
+          <TabButton tab="trading" icon={<TrendingUp size={20} />} label="Trading" />
           <TabButton tab="hand" icon={<Boxes size={20} />} label="Hand" />
         </div>
 
@@ -66,6 +68,8 @@ export const GameBoard: React.FC = () => {
           {activeTab === 'spacedock' && <SpaceDock />}
           
           {activeTab === 'shop' && <Shop />}
+
+          {activeTab === 'trading' && <Trading />}
 
           {activeTab === 'hand' && (
             <div className="bg-gray-800 rounded-lg p-6">

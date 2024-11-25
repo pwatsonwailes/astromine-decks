@@ -1,5 +1,13 @@
-export type Resource = 'iron' | 'titanium' | 'platinum' | 'water' | 'helium3';
 export type AsteroidType = 'C' | 'S' | 'M';
+export type Resource = 
+  | 'silicates' 
+  | 'oxides' 
+  | 'sulfides' 
+  | 'iron' 
+  | 'nickel' 
+  | 'silicon' 
+  | 'magnesium';
+
 export type EquipmentSlot = 'mining' | 'defense' | 'weapon';
 
 export interface Equipment {
@@ -72,15 +80,22 @@ export interface Corporation {
   hasAdvancedSpaceDock: boolean;
 }
 
+// Add new types for asteroid composition
+export type AsteroidComposition = {
+  resource: Resource;
+  amount: number;
+  baseValue: number;
+};
+
+// Update the Asteroid interface
 export interface Asteroid {
   id: string;
   name: string;
   health: number;
   maxHealth: number;
-  resources: Partial<Record<Resource, number>>;
+  composition: AsteroidComposition[];
   difficulty: number;
   type: AsteroidType;
-  baseYield: number;
   position: {
     x: number;
     y: number;

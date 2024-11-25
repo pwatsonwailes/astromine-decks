@@ -284,31 +284,55 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
     }
 
+    case 'SELL_RESOURCE': {
+      const { resource, amount, price } = action;
+      if (state.player.resources[resource] < amount) return state;
+
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          resources: {
+            ...state.player.resources,
+            [resource]: state.player.resources[resource] - amount
+          },
+          credits: state.player.credits + (amount * price)
+        }
+      };
+    }
+
     case 'END_TURN': {
       let newState = { ...state };
       
+      // Process mining operations
       newState.asteroids = newState.asteroids.map(asteroid => {
         const ships = state.player.ships.filter(ship => 
           ship.assignedAsteroidId === asteroid.id
         );
 
+        // Calculate mining results
         ships.forEach(ship => {
           const totalMiningPower = ship.equipment.mining.reduce(
             (total, equip) => total + (equip.miningPower || 0), 0
           );
+
+          // Mine resources based on composition
+          asteroid.composition.forEach(comp => {
+            const minedAmount = Math.floor((totalMiningPower / 100) * comp.amount * 0.1);
+            if (minedAmount > 0) {
+              newState.player.resources[comp.resource] = 
+                (newState.player.resources[comp.resource] || 0) + minedAmount;
+              comp.amount -= minedAmount;
+            }
+          });
+
           asteroid.health = Math.max(0, asteroid.health - totalMiningPower);
         });
 
         return asteroid;
       });
 
-      if (newState.asteroids.filter(a => a.health > 0).length < 3) {
-        newState.asteroids = [
-          ...newState.asteroids,
-          ...generateInitialAsteroids(2)
-        ];
-      }
-
+      // Rest of the END_TURN logic...
       const cardsToDraw = 5 - newState.hand.length;
       for (let i = 0; i < cardsToDraw; i++) {
         newState = gameReducer(newState, { type: 'DRAW_CARD' });
