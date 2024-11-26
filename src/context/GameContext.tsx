@@ -1,16 +1,32 @@
 import React, { createContext, useContext, useReducer } from 'react';
-import { GameState, Card, Corporation, Asteroid, Resource, Ship, Equipment, ShipClass } from '../types/game';
-import { initialCards } from '../data/cards';
-import { generateInitialAsteroids, shuffleDeck, createDeckWithUniqueIds } from '../utils/gameUtils';
-import { createShip } from '../data/ships';
-import { equipmentList } from '../data/equipment'
+import { GameState, Card, Corporation, Ship, Equipment, ShipClass, Resource, DiplomaticAction, CombatAction } from '../types/game';
+import { generateInitialAsteroids } from '../utils/gameUtils';
+import { createShip, shipTemplates, shipBuildTimes } from '../data/ships';
+import { equipmentList } from '../data/equipment';
 import { generateTrader } from '../data/traders';
 import { generateCorporation } from '../data/corporations';
-import { evaluateDiplomaticProposal, determineAIAction } from '../utils/aiUtils';
+import { evaluateDiplomaticProposal, determineAIAction, determineAICombatActions, processAITurn } from '../utils/aiUtils';
+import { calculateCombatRound } from '../utils/combatUtils';
 
 interface GameProviderProps {
   children: React.ReactNode;
   initialOpponents: number;
+}
+
+interface ShipBuildOrder {
+  id: string;
+  shipClass: ShipClass;
+  turnsRemaining: number;
+  totalTurns: number;
+  cost: number;
+}
+
+interface GameLog {
+  id: string;
+  turn: number;
+  messages: string[];
+  resourceChanges?: Partial<Record<Resource, number>>;
+  creditChange?: number;
 }
 
 const createInitialCorporation = (id: string, name: string): Corporation => {
@@ -18,8 +34,8 @@ const createInitialCorporation = (id: string, name: string): Corporation => {
   const basicLaser = equipmentList.find(eq => eq.id === 'basic-mining-laser')!;
   
   return {
-    id: 'player',
-    name: 'Terra Mining Corp',
+    id,
+    name,
     health: 80,
     maxHealth: 80,
     credits: 200,
@@ -41,28 +57,17 @@ const createInitialCorporation = (id: string, name: string): Corporation => {
         mining: [basicLaser]
       }
     }],
-    hasAdvancedSpaceDock: false
+    hasAdvancedSpaceDock: false,
+    diplomaticStatus: {},
+    agreements: [],
+    isPlayer: id === 'player',
+    personality: id !== 'player' ? {
+      aggression: Math.random(),
+      cooperation: Math.random(),
+      greed: Math.random()
+    } : undefined
   };
 };
-
-const generateShopCards = () => {
-  return shuffleDeck([...initialCards])
-    .slice(0, 3)
-    .map(card => ({
-      ...card,
-      id: `shop-${crypto.randomUUID()}`,
-      price: Math.floor(Math.random() * 30) + 20
-    }));
-};
-
-const { deck: initialDeck, hand: initialHand } = (() => {
-  const fullDeck = createDeckWithUniqueIds([...initialCards, ...initialCards, ...initialCards]);
-  const shuffledDeck = shuffleDeck(fullDeck);
-  return {
-    hand: shuffledDeck.slice(0, 5),
-    deck: shuffledDeck.slice(5)
-  };
-})();
 
 const createInitialState = (opponentCount: number): GameState => {
   // Generate corporations
@@ -74,50 +79,28 @@ const createInitialState = (opponentCount: number): GameState => {
   // Generate asteroids (7-11 per corporation)
   const asteroidsPerCorp = Math.floor(Math.random() * 5) + 7;
   const totalAsteroids = asteroidsPerCorp * (opponentCount + 1);
-  
-  const { deck: initialDeck, hand: initialHand } = (() => {
-    const fullDeck = createDeckWithUniqueIds([...initialCards, ...initialCards, ...initialCards]);
-    const shuffledDeck = shuffleDeck(fullDeck);
-    return {
-      hand: shuffledDeck.slice(0, 5),
-      deck: shuffledDeck.slice(5)
-    };
-  })();
 
   return {
     player: playerCorp,
     corporations: [playerCorp, ...aiCorps],
     asteroids: generateInitialAsteroids(totalAsteroids),
-    deck: initialDeck,
-    hand: initialHand,
+    deck: [],
+    hand: [],
     discardPile: [],
     energy: 3,
     maxEnergy: 3,
     turn: 1,
-    shop: generateShopCards(),
     activeMiningOperations: [],
     traders: [generateTrader()],
     shipBuildQueue: [],
     gameLogs: [],
-    diplomaticProposals: []
+    market: {
+      prices: [],
+      lastRefresh: Date.now()
+    },
+    diplomaticProposals: [],
+    activeCombats: []
   };
-};
-
-const initialState: GameState = {
-  player: createInitialCorporation('player', 'Terra Mining Corp'),
-  opponent: createInitialCorporation('opponent', 'Lunar Industries'),
-  asteroids: generateInitialAsteroids(5),
-  deck: initialDeck,
-  hand: initialHand,
-  discardPile: [],
-  energy: 3,
-  maxEnergy: 3,
-  turn: 1,
-  shop: generateShopCards(),
-  activeMiningOperations: [],
-  traders: [generateTrader()], // Start with one trader
-  shipBuildQueue: [],
-  gameLogs: []
 };
 
 type GameAction = 
@@ -150,21 +133,21 @@ type GameAction =
         turnsToAct?: number;
       };
     }
-  | { type: 'ACCEPT_DIPLOMATIC_PROPOSAL'; proposalId: string; }
-  | { type: 'REJECT_DIPLOMATIC_PROPOSAL'; proposalId: string; }
+  | { type: 'ACCEPT_DIPLOMATIC_PROPOSAL'; proposalId: string }
+  | { type: 'REJECT_DIPLOMATIC_PROPOSAL'; proposalId: string }
   | {
-    type: 'INITIATE_COMBAT';
-    attackerId: string;
-    defenderId: string;
-    attackerShips: Ship[];
-    defenderShips: Ship[];
-  }
-| {
-    type: 'PERFORM_COMBAT_ACTION';
-    combatId: string;
-    action: CombatAction;
-    shipIds: string[];
-  };
+      type: 'INITIATE_COMBAT';
+      attackerId: string;
+      defenderId: string;
+      attackerShips: Ship[];
+      defenderShips: Ship[];
+    }
+  | {
+      type: 'PERFORM_COMBAT_ACTION';
+      combatId: string;
+      action: CombatAction;
+      shipIds: string[];
+    };
 
 const gameReducer = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
@@ -619,55 +602,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
     }
 
-    case 'DRAW_CARD': {
-      if (state.deck.length === 0) {
-        if (state.discardPile.length === 0) {
-          return state;
-        }
-        const shuffledDiscard = shuffleDeck(state.discardPile);
-        return {
-          ...state,
-          deck: shuffledDiscard.slice(1),
-          discardPile: [],
-          hand: [...state.hand, shuffledDiscard[0]]
-        };
-      }
-      return {
-        ...state,
-        deck: state.deck.slice(1),
-        hand: [...state.hand, state.deck[0]]
-      };
-    }
-
-    case 'PLAY_CARD': {
-      if (action.card.type === 'mining' && action.targetAsteroidId) {
-        const targetAsteroid = state.asteroids.find(a => a.id === action.targetAsteroidId);
-        if (!targetAsteroid) return state;
-
-        const operation = {
-          cardId: action.card.id,
-          card: action.card,
-          asteroidId: action.targetAsteroidId,
-          turnsActive: 0
-        };
-
-        return {
-          ...state,
-          hand: state.hand.filter(c => c.id !== action.card.id),
-          activeMiningOperations: [...state.activeMiningOperations, operation],
-          energy: state.energy - action.card.cost
-        };
-      }
-
-      const newState = action.card.effect(state);
-      return {
-        ...newState,
-        hand: state.hand.filter(c => c.id !== action.card.id),
-        discardPile: [...state.discardPile, action.card],
-        energy: state.energy - action.card.cost
-      };
-    }
-
     case 'SELL_RESOURCE': {
       const { resource, amount, price } = action;
       if (state.player.resources[resource] < amount) return state;
@@ -695,7 +629,7 @@ const GameContext = createContext<{
   dispatch: React.Dispatch<GameAction>;
 } | null>(null);
 
-export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children, initialOpponents }) => {
+export const GameProvider: React.FC<GameProviderProps> = ({ children, initialOpponents }) => {
   const [state, dispatch] = useReducer(gameReducer, initialOpponents, createInitialState);
 
   return (

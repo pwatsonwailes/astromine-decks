@@ -267,7 +267,6 @@ export interface GameState {
   energy: number;
   maxEnergy: number;
   turn: number;
-  shop: Card[];
   activeMiningOperations: ActiveMiningOperation[];
   traders: Trader[];
   shipBuildQueue: ShipBuildOrder[];
