@@ -19,7 +19,6 @@ import {
   LayoutDashboard, 
   Store, 
   Rocket, 
-  CreditCard, 
   Mountain, 
   Boxes, 
   Warehouse, 
@@ -42,9 +41,6 @@ export const GameBoard: React.FC = () => {
     setIsEndingTurn(true);
     setTimeout(() => {
       dispatch({ type: 'END_TURN' });
-      if (state.shop.length < 3) {
-        dispatch({ type: 'REFRESH_SHOP' });
-      }
       setIsEndingTurn(false);
     }, 1000);
   };
@@ -78,7 +74,6 @@ export const GameBoard: React.FC = () => {
             <TabButton tab="asteroids" icon={<Mountain size={20} />} />
             <TabButton tab="ships" icon={<Rocket size={20} />} />
             <TabButton tab="spacedock" icon={<Warehouse size={20} />} />
-            <TabButton tab="shop" icon={<CreditCard size={20} />} />
             <TabButton tab="trading" icon={<TrendingUp size={20} />} />
             <TabButton tab="market" icon={<Store size={20} />} />
             <TabButton tab="hand" icon={<Boxes size={20} />} />

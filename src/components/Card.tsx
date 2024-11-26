@@ -10,11 +10,9 @@ interface CardProps {
 export const Card: React.FC<CardProps> = ({ card, isShopItem = false }) => {
   const { state, dispatch } = useGame();
   const canPlay = !isShopItem && state.energy >= card.cost;
-  const isCompatible = !card.asteroidTypeRequirement || 
-    (state.currentAsteroid && state.player.equippedMiningTypes.includes(state.currentAsteroid.type));
 
   const handleClick = () => {
-    if (isShopItem || !canPlay || !isCompatible) return;
+    if (isShopItem || !canPlay) return;
     dispatch({ type: 'PLAY_CARD', card });
   };
 
@@ -22,7 +20,7 @@ export const Card: React.FC<CardProps> = ({ card, isShopItem = false }) => {
     <div 
       onClick={handleClick}
       className={`relative w-48 h-64 rounded-lg shadow-lg transition-transform hover:scale-105 cursor-pointer 
-        ${!isShopItem && canPlay && isCompatible ? 'bg-gray-700' : 'bg-gray-800 opacity-75'}`}
+        ${!isShopItem && canPlay ? 'bg-gray-700' : 'bg-gray-800 opacity-75'}`}
     >
       <div className="p-4">
         <div className="flex justify-between items-center mb-2">

@@ -1,4 +1,4 @@
-import { Asteroid, Resource, Card, AsteroidType, AsteroidComposition } from '../types/game';
+import { Asteroid, Resource, AsteroidType, AsteroidComposition } from '../types/game';
 import { resourceBaseValues } from '../data/resources';
 
 const asteroidNames = [
@@ -60,20 +60,4 @@ const selectAsteroidType = (difficulty: number): AsteroidType => {
   if (difficulty > 3 && roll < 0.2) return 'M';
   if (difficulty > 2 && roll < 0.5) return 'S';
   return 'C';
-};
-
-export const createDeckWithUniqueIds = (cards: Card[]): Card[] => {
-  return cards.map(card => ({
-    ...card,
-    id: `${card.id}-${crypto.randomUUID()}`
-  }));
-};
-
-export const shuffleDeck = (deck: Card[]): Card[] => {
-  const newDeck = [...deck];
-  for (let i = newDeck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
-  }
-  return newDeck;
 };
